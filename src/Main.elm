@@ -3,8 +3,10 @@
 import Browser
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onClick)
+import Html.Events exposing (..)
 import CssModules exposing (css)
+import Json.Decode as Decode
+import Json.Encode as Encode
 
 
 styles =
@@ -24,27 +26,33 @@ type alias ToDo =
     ,editing: Bool
     ,id: Int}
 
-type alias Model = List (Maybe ToDo)
+type alias Model = 
+  {
+    entries: List ToDo
+    ,inputText: String
+  }
 init : () -> (Model, Cmd msg)
 init _ =
-  ([] 
-    -- [Just {
-    -- description="hahaha"
-    -- ,completed= False
-    -- ,editing=False 
-    -- ,id=1},
-    -- Just {
-    -- description="xixixi"
-    -- ,completed= False
-    -- ,editing=False 
-    -- ,id=2}
-    -- ]
-    ,Cmd.none)
+    ({entries = []
+    ,inputText=""}
+      -- [Just {
+      -- description="hahaha"
+      -- ,completed= False
+      -- ,editing=False 
+      -- ,id=1},
+      -- Just {
+      -- description="xixixi"
+      -- ,completed= False
+      -- ,editing=False 
+      -- ,id=2}
+      -- ]
+      ,Cmd.none)
 
 
 -- UPDATE
 
 type Msg = AddEntry String
+  |InputText String
 
 update :  Msg->Model->(Model, Cmd msg)
 update msg model=
@@ -57,120 +65,46 @@ update msg model=
           ,editing=False 
           ,id=1}
       in
-       (Just entry::model, Cmd.none)
+        ({model | entries = entry::model.entries},Cmd.none)
+    InputText string ->
+      ({model| inputText = string},Cmd.none)
 -- VIEW
 
 view : Model -> Html Msg
-view todolist =
-        --below cannot be written as ui[][List.map xxxx], has to use <|.
+view model =
+        
         -- Debug.log (Debug.toString (styles.class .list))
         div[][
           div[][
-            input[type_ "text", name "things to do"][]
-            ,button[onClick (AddEntry "newitem")][text "Add"]
+            input[type_ "text", name "things to do", onInput InputText, onEnter (AddEntry model.inputText)][]
+            ,button[onClick (AddEntry model.inputText)][text "Add"]
           ]
+          --below cannot be written as ui[][List.map xxxx], has to use <|.
           ,ul[styles.class .list] <| 
-            List.map (\x -> 
-                        case x of 
-                          Just a ->
-                            li[][text a.description]
-                          Nothing ->
-                            li[][]) todolist
+            List.map (\entry -> 
+                        -- case entry of 
+                        --   Just a ->
+                            li[][text entry.description]
+                          -- Nothing ->
+                          --   li[][text "nothing"]
+                            ) model.entries
         ]
      
     
 subscriptions : Model -> Sub msg
 subscriptions model = 
   Sub.none
--- 
--- import Browser
--- import Html exposing (..)
--- import Html.Attributes exposing (..)
--- import Html.Events exposing (onInput, onClick)
 
+--Helper
 
-
--- -- MAIN
-
-
--- main =
---   Browser.sandbox { init = init, update = update, view = view }
-
-
-
--- -- MODEL
-
-
--- type alias Model =
---   { name : String
---   , password : String
---   , passwordAgain : String
---   , age : Int
---   , isOk : String
---   }
-
-
--- init : Model
--- init =
---   Model "" "" "" 0 ""
-
-
-
--- -- UPDATE
-
-
--- type Msg
---   = Name String
---   | Password String
---   | PasswordAgain String
---   | Age String
---   | IsOk String
-
-
--- update : Msg -> Model -> Model
--- update msg model =
---   case msg of
---     Name name ->
---       { model | name = name }
-
---     Password password ->
---       { model | password = password }
-
---     PasswordAgain password ->
---       { model | passwordAgain = password }
-
---     Age age ->
---       { model | age = Maybe.withDefault 0 (String.toInt age) }
-
---     IsOk string ->
---       { model | isOk = string}
-
-
--- -- VIEW
-
-
--- view : Model -> Html Msg
--- view model =
---   div []
---     [ div []
---       [ viewInput "text" "Name" model.name Name
---       , viewInput "text" "Age" (String.fromInt model.age) Age
---       , viewInput "password" "Password" model.password Password
---       , viewInput "password" "Re-enter Password" model.passwordAgain PasswordAgain
---       , viewInput ""
---       ]
---     , button [onClick IsOk] [text "Submit"]]
-    
-
-
--- viewInput : String -> String -> String -> (String -> msg) -> Html msg
--- viewInput t p v toMsg =
---   input [ type_ t, placeholder p, value v, onInput toMsg ] []
-
-
--- viewValidation : Model -> Html msg
--- viewValidation model =
---   if model.password == model.passwordAgain then
---     div [ style "color" "green" ] [ text "OK" ]
---   else
---     div [ style "color" "red" ] [ text "Passwords do not match!" ]
+onEnter: msg -> Attribute msg
+onEnter msg=
+  keyCode
+    |> Decode.andThen
+      (\key ->
+        if key == 13 then
+          Decode.succeed msg
+        else
+          Decode.fail "not enter"
+      )
+    |> on "keyup"
